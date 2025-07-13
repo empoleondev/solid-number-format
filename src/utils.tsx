@@ -1,4 +1,4 @@
-import { createEffect, createSignal } from 'solid-js';
+import { createEffect, createSignal, untrack } from 'solid-js';
 import {
   NumberFormatBaseProps,
   FormatInputValueFunction,
@@ -469,7 +469,7 @@ export function useInternalValues(
       let formattedValue, numAsString;
       if (isNotValidValue(value)) {
         numAsString = '';
-        formattedValue = '';
+        formattedValue = format(numAsString);
       } else if (typeof value === 'number' || valueIsNumericString) {
         numAsString = typeof value === 'number' ? toNumericString(value) : value;
         formattedValue = format(numAsString);
@@ -499,7 +499,7 @@ export function useInternalValues(
 
   // if value is switch from controlled to uncontrolled, use the internal state's value to format with new props
   createEffect(() => {
-    const _value = isNil(value()) ? values().numAsString : value();
+    const _value = isNil(value()) ? untrack(() => values().numAsString) : value();
     const _valueIsNumericString = isNil(value()) ? true : valueIsNumericString;
     const newValues = getValues(_value, _valueIsNumericString);
     setValues(newValues);

@@ -213,16 +213,16 @@ export default function NumberFormatBase<BaseType = InputAttributes>(
    * if the formatting props is removed, in which case last formatted value will be different from the numeric string value
    * in such case we need to inform the parent.
    */
-  createEffect(() => {
-    const { formattedValue: lastFormattedValue, numAsString: lastNumAsString } = lastUpdatedValue;
+  // createEffect(() => {
+  //   const { formattedValue: lastFormattedValue, numAsString: lastNumAsString } = lastUpdatedValue;
 
-    if (formattedValue() !== lastFormattedValue || numAsString() !== lastNumAsString) {
-      _onValueChange(getValueObject(formattedValue(), numAsString()), {
-        event: undefined,
-        source: SourceType.props,
-      });
-    }
-  });
+  //   if (formattedValue() !== lastFormattedValue || numAsString() !== lastNumAsString) {
+  //     _onValueChange(getValueObject(formattedValue(), numAsString()), {
+  //       event: undefined,
+  //       source: SourceType.props,
+  //     });
+  //   }
+  // });
 
   // also if formatted value is changed from the props, we need to update the caret position
   // keep the last caret position if element is focused

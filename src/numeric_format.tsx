@@ -95,8 +95,13 @@ function getSeparators<BaseType = InputAttributes>(props: NumericFormatProps<Bas
   ]);
 
   const decimalSeparator = local.decimalSeparator ?? '.';
-  const thousandSeparator = local.thousandSeparator ? ',' : '';
-  let allowedDecimalSeparators = !local.allowedDecimalSeparators ? [decimalSeparator, '.'] : [];
+  const thousandSeparator =
+    local.thousandSeparator === true
+      ? ','
+      : typeof local.thousandSeparator === 'string'
+      ? local.thousandSeparator
+      : '';
+  const allowedDecimalSeparators = local.allowedDecimalSeparators ?? [decimalSeparator, '.'];
 
   return {
     decimalSeparator,
@@ -378,8 +383,8 @@ export function useNumericFormat<BaseType = InputAttributes>(
   ]);
 
   const prefix = local.prefix ?? '';
-  // const onKeyDown = local.onKeyDown?? noop;
-  // const onBlur = local.onBlur?? noop;
+  const onKeyDown = local.onKeyDown?? noop;
+  const onBlur = local.onBlur?? noop;
 
   // get derived decimalSeparator and allowedDecimalSeparators
   const { decimalSeparator, allowedDecimalSeparators } = getSeparators(props);
@@ -443,167 +448,167 @@ export function useNumericFormat<BaseType = InputAttributes>(
     _removeFormatting,
     local.onValueChange,
   );
-  // const numAsString = () => values().numAsString;
-  // const formattedValue = () => values().formattedValue;
+  const numAsString = () => values().numAsString;
+  const formattedValue = () => values().formattedValue;
 
-  // const _onKeyDown: InputAttributes['onKeyDown'] = (e) => {
-  //   const el = e.target as HTMLInputElement;
-  //   const { key } = e;
-  //   const { selectionStart, selectionEnd, value = '' } = el;
+  const _onKeyDown: InputAttributes['onKeyDown'] = (e) => {
+    const el = e.target as HTMLInputElement;
+    const { key } = e;
+    const { selectionStart, selectionEnd, value = '' } = el;
 
-  //   // if user tries to delete partial prefix then ignore it
-  //   if ((key === 'Backspace' || key === 'Delete') && selectionEnd < prefix.length) {
-  //     e.preventDefault();
-  //     return;
-  //   }
+    // if user tries to delete partial prefix then ignore it
+    if ((key === 'Backspace' || key === 'Delete') && selectionEnd < prefix.length) {
+      e.preventDefault();
+      return;
+    }
 
-  //   // if multiple characters are selected and user hits backspace, no need to handle anything manually
-  //   if (selectionStart !== selectionEnd) {
-  //     typeof onKeyDown === "function" && onKeyDown(e);
-  //     return;
-  //   }
+    // if multiple characters are selected and user hits backspace, no need to handle anything manually
+    if (selectionStart !== selectionEnd) {
+      typeof onKeyDown === "function" && onKeyDown(e);
+      return;
+    }
 
-  //   // if user hits backspace, while the cursor is before prefix, and the input has negation, remove the negation
-  //   if (
-  //     key === 'Backspace' &&
-  //     value[0] === '-' &&
-  //     selectionStart === prefix.length + 1 &&
-  //     local.allowNegative
-  //   ) {
-  //     // bring the cursor to after negation
-  //     setCaretPosition(el, 1);
-  //   }
+    // if user hits backspace, while the cursor is before prefix, and the input has negation, remove the negation
+    if (
+      key === 'Backspace' &&
+      value[0] === '-' &&
+      selectionStart === prefix.length + 1 &&
+      local.allowNegative
+    ) {
+      // bring the cursor to after negation
+      setCaretPosition(el, 1);
+    }
 
-  //   // don't allow user to delete decimal separator when decimalScale and fixedDecimalScale is set
-  //   if (local.decimalScale && local.fixedDecimalScale) {
-  //     if (key === 'Backspace' && value[selectionStart - 1] === decimalSeparator) {
-  //       setCaretPosition(el, selectionStart - 1);
-  //       e.preventDefault();
-  //     } else if (key === 'Delete' && value[selectionStart] === decimalSeparator) {
-  //       e.preventDefault();
-  //     }
-  //   }
+    // don't allow user to delete decimal separator when decimalScale and fixedDecimalScale is set
+    if (local.decimalScale && local.fixedDecimalScale) {
+      if (key === 'Backspace' && value[selectionStart - 1] === decimalSeparator) {
+        setCaretPosition(el, selectionStart - 1);
+        e.preventDefault();
+      } else if (key === 'Delete' && value[selectionStart] === decimalSeparator) {
+        e.preventDefault();
+      }
+    }
 
-  //   // if user presses the allowed decimal separator before the separator, move the cursor after the separator
-  //   if (allowedDecimalSeparators?.includes(key) && value[selectionStart] === decimalSeparator) {
-  //     setCaretPosition(el, selectionStart + 1);
-  //   }
+    // if user presses the allowed decimal separator before the separator, move the cursor after the separator
+    if (allowedDecimalSeparators?.includes(key) && value[selectionStart] === decimalSeparator) {
+      setCaretPosition(el, selectionStart + 1);
+    }
 
-  //   const _thousandSeparator = local.thousandSeparator === true ? ',' : local.thousandSeparator;
+    const _thousandSeparator = local.thousandSeparator === true ? ',' : local.thousandSeparator;
 
-  //   // move cursor when delete or backspace is pressed before/after thousand separator
-  //   if (key === 'Backspace' && value[(selectionStart as number) - 1] === _thousandSeparator) {
-  //     setCaretPosition(el, (selectionStart as number) - 1);
-  //   }
+    // move cursor when delete or backspace is pressed before/after thousand separator
+    if (key === 'Backspace' && value[(selectionStart as number) - 1] === _thousandSeparator) {
+      setCaretPosition(el, (selectionStart as number) - 1);
+    }
 
-  //   if (key === 'Delete' && value[selectionStart as number] === _thousandSeparator) {
-  //     setCaretPosition(el, (selectionStart as number) + 1);
-  //   }
+    if (key === 'Delete' && value[selectionStart as number] === _thousandSeparator) {
+      setCaretPosition(el, (selectionStart as number) + 1);
+    }
 
-  //   typeof onKeyDown === "function" && onKeyDown(e);
-  // };
+    typeof onKeyDown === "function" && onKeyDown(e);
+  };
 
-  // const _onBlur: InputAttributes['onBlur'] = (e) => {
-  //   let _value = numAsString();
+  const _onBlur: InputAttributes['onBlur'] = (e) => {
+    let _value = numAsString();
 
-  //   // if there no no numeric value, clear the input
-  //   if (!_value.match(/\d/g)) {
-  //     _value = '';
-  //   }
+    // if there no no numeric value, clear the input
+    if (!_value.match(/\d/g)) {
+      _value = '';
+    }
 
-  //   // clear leading 0s
-  //   if (!local.allowLeadingZeros) {
-  //     _value = fixLeadingZero(_value) as string;
-  //   }
+    // clear leading 0s
+    if (!local.allowLeadingZeros) {
+      _value = fixLeadingZero(_value) as string;
+    }
 
-  //   // apply fixedDecimalScale on blur event
-  //   if (local.fixedDecimalScale && local.decimalScale) {
-  //     _value = roundToPrecision(_value, local.decimalScale, local.fixedDecimalScale);
-  //   }
+    // apply fixedDecimalScale on blur event
+    if (local.fixedDecimalScale && local.decimalScale) {
+      _value = roundToPrecision(_value, local.decimalScale, local.fixedDecimalScale);
+    }
 
-  //   if (_value !== numAsString()) {
-  //     const formattedValue = format(_value, props);
-  //     _onValueChange(
-  //       {
-  //         formattedValue,
-  //         value: _value,
-  //         floatValue: parseFloat(_value),
-  //       },
-  //       {
-  //         event: e,
-  //         source: SourceType.event,
-  //       },
-  //     );
-  //   }
+    if (_value !== numAsString()) {
+      const formattedValue = format(_value, props);
+      _onValueChange(
+        {
+          formattedValue,
+          value: _value,
+          floatValue: parseFloat(_value),
+        },
+        {
+          event: e,
+          source: SourceType.event,
+        },
+      );
+    }
 
-  //   typeof onBlur === "function" && onBlur(e);
-  // };
+    typeof onBlur === "function" && onBlur(e);
+  };
 
-  // const isValidInputCharacter = (inputChar: string) => {
-  //   if (inputChar === decimalSeparator) return true;
-  //   return charIsNumber(inputChar);
-  // };
+  const isValidInputCharacter = (inputChar: string) => {
+    if (inputChar === decimalSeparator) return true;
+    return charIsNumber(inputChar);
+  };
 
-  // const isCharacterSame: IsCharacterSame = ({
-  //   currentValue,
-  //   lastValue,
-  //   formattedValue,
-  //   currentValueIndex,
-  //   formattedValueIndex,
-  // }) => {
-  //   const curChar = currentValue[currentValueIndex];
-  //   const newChar = formattedValue[formattedValueIndex];
+  const isCharacterSame: IsCharacterSame = ({
+    currentValue,
+    lastValue,
+    formattedValue,
+    currentValueIndex,
+    formattedValueIndex,
+  }) => {
+    const curChar = currentValue[currentValueIndex];
+    const newChar = formattedValue[formattedValueIndex];
 
-  //   /**
-  //    * NOTE: as thousand separator and allowedDecimalSeparators can be same, we need to check on
-  //    * typed range if we have typed any character from allowedDecimalSeparators, in that case we
-  //    * consider different characters like , and . same within the range of updated value.
-  //    */
-  //   const typedRange = findChangeRange(lastValue, currentValue);
-  //   const { to } = typedRange;
+    /**
+     * NOTE: as thousand separator and allowedDecimalSeparators can be same, we need to check on
+     * typed range if we have typed any character from allowedDecimalSeparators, in that case we
+     * consider different characters like , and . same within the range of updated value.
+     */
+    const typedRange = findChangeRange(lastValue, currentValue);
+    const { to } = typedRange;
 
-  //   // handle corner case where if we user types a decimal separator with fixedDecimalScale
-  //   // and pass back float value the cursor jumps. #851
-  //   const getDecimalSeparatorIndex = (value: string) => {
-  //     return _removeFormatting(value).indexOf('.') + prefix.length;
-  //   };
+    // handle corner case where if we user types a decimal separator with fixedDecimalScale
+    // and pass back float value the cursor jumps. #851
+    const getDecimalSeparatorIndex = (value: string) => {
+      return _removeFormatting(value).indexOf('.') + prefix.length;
+    };
 
-  //   if (
-  //     getValue() === 0 &&
-  //     local.fixedDecimalScale &&
-  //     local.decimalScale &&
-  //     currentValue[to.start] === decimalSeparator &&
-  //     getDecimalSeparatorIndex(currentValue) < currentValueIndex &&
-  //     getDecimalSeparatorIndex(formattedValue) > formattedValueIndex
-  //   ) {
-  //     return false;
-  //   }
+    if (
+      getValue() === 0 &&
+      local.fixedDecimalScale &&
+      local.decimalScale &&
+      currentValue[to.start] === decimalSeparator &&
+      getDecimalSeparatorIndex(currentValue) < currentValueIndex &&
+      getDecimalSeparatorIndex(formattedValue) > formattedValueIndex
+    ) {
+      return false;
+    }
 
-  //   if (
-  //     currentValueIndex >= to.start &&
-  //     currentValueIndex < to.end &&
-  //     allowedDecimalSeparators &&
-  //     allowedDecimalSeparators.includes(curChar) &&
-  //     newChar === decimalSeparator
-  //   ) {
-  //     return true;
-  //   }
+    if (
+      currentValueIndex >= to.start &&
+      currentValueIndex < to.end &&
+      allowedDecimalSeparators &&
+      allowedDecimalSeparators.includes(curChar) &&
+      newChar === decimalSeparator
+    ) {
+      return true;
+    }
 
-  //   return curChar === newChar;
-  // };
+    return curChar === newChar;
+  };
 
   return {
     ...(restProps as NumberFormatBaseProps<BaseType>),
-    value: props.value, //formattedValue(),
+    value: formattedValue(),
     valueIsNumericString: false,
-    // isValidInputCharacter,
-    // isCharacterSame,
+    isValidInputCharacter,
+    isCharacterSame,
     onValueChange: _onValueChange,
     format: _format,
-    // removeFormatting: _removeFormatting,
+    removeFormatting: _removeFormatting,
     getCaretBoundary: (formattedValue: string) => getCaretBoundary(formattedValue, props),
-    // onKeyDown: _onKeyDown,
-    // onBlur: _onBlur,
+    onKeyDown: _onKeyDown,
+    onBlur: _onBlur,
   };
 }
 

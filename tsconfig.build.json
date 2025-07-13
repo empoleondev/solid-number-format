@@ -1,14 +1,13 @@
 {
-  "compilerOptions": {
-    "jsx": "preserve",
-    "jsxImportSource": "solid-js",
-    "esModuleInterop": true,
-    "downlevelIteration": true,
-    "noImplicitAny": true,
-    "outDir": "./types",
-    "declaration": true,
-    "skipLibCheck": true,
-    "emitDeclarationOnly": true
-  },
-  "include": ["src"]
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules",
+    "**/node_modules",
+    "src/stories/*.tsx"
+  ]
 }
