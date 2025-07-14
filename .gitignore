@@ -31,9 +31,7 @@ lerna-debug.log*
 .env*.local
 
 # build
-lib/
-cjs/
-esm/
+dist/
 
 # typescript
 *.tsbuildinfo
