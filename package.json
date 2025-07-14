@@ -1,7 +1,7 @@
 {
   "name": "@empoleon/solid-number-format",
   "description": "Solidjs component to format number in an input or as a text.",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "type": "module",
   "main": "dist/solid-number-format.cjs.js",
   "module": "dist/solid-number-format.es.js",
@@ -27,12 +27,13 @@
     "mask"
   ],
   "scripts": {
+    "clean": "rimraf ./dist",
     "start": "webpack-dev-server --hot",
     "start-doc": "docusaurus start documentation/v5 --port 9000",
     "build-doc": "docusaurus build documentation/v5",
     "publish-doc": "node publish_doc.js",
     "format": "prettier --write ./src",
-    "build": "cross-env yarn build-dist && yarn build-types && yarn format",
+    "build": "cross-env yarn clean && yarn build-dist && yarn build-types && yarn format",
     "build-dist": "cross-env NODE_ENV=production rollup -c rollup.config.js",
     "build-types": "tsc -p tsconfig.build.json",
     "test": "vitest && yarn test-ts",
@@ -42,6 +43,8 @@
     "lint": "cross-env eslint src/**",
     "storybook": "storybook dev -p 6006",
     "newchangeset": "yarn exec changeset",
+    "version": "yarn changeset version",
+    "release": "yarn changeset publish",
     "version:dev": "yarn version prerelease",
     "release:dev": "yarn npm publish --tag dev"
   },
@@ -84,6 +87,7 @@
     "material-ui": "^0.20.2",
     "pascal-case": "3.1.2",
     "prettier": "^2.2.1",
+    "rimraf": "^3.0.2",
     "rollup": "^1.22.0",
     "rollup-plugin-babel": "^4.3.3",
     "rollup-plugin-commonjs": "^10.1.0",

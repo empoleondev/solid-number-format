@@ -1759,6 +1759,7 @@ __metadata:
     material-ui: "npm:^0.20.2"
     pascal-case: "npm:3.1.2"
     prettier: "npm:^2.2.1"
+    rimraf: "npm:^3.0.2"
     rollup: "npm:^1.22.0"
     rollup-plugin-babel: "npm:^4.3.3"
     rollup-plugin-commonjs: "npm:^10.1.0"

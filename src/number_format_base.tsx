@@ -458,28 +458,6 @@ export default function NumberFormatBase<BaseType = InputAttributes>(
   const inputMode: InputAttributes['inputMode'] =
     mounted() && addInputMode() ? 'numeric' : undefined;
 
-  // const inputProps = Object.assign({ inputMode }, otherProps, {
-  //   type,
-  //   value: formattedValue,
-  //   onChange: _onChange as unknown as JSX.EventHandlerUnion<HTMLInputElement, Event>,
-  //   onKeyDown: _onKeyDown as unknown as JSX.EventHandlerUnion<HTMLInputElement, KeyboardEvent>,
-  //   onMouseUp: _onMouseUp as unknown as JSX.EventHandlerUnion<HTMLInputElement, MouseEvent>,
-  //   onFocus: _onFocus as unknown as JSX.EventHandlerUnion<HTMLInputElement, FocusEvent>,
-  //   onBlur: _onBlur as unknown as JSX.EventHandlerUnion<HTMLInputElement, FocusEvent>,
-  // });
-
-  const inputProps = {
-    inputMode,
-    type,
-    value: formattedValue(),
-    onInput: _onChange,
-    onKeyDown: _onKeyDown,
-    onMouseUp: _onMouseUp,
-    onFocus: _onFocus,
-    onBlur: _onBlur,
-    ...otherProps,
-  } as InputAttributes & JSX.IntrinsicElements['input'];
-
   if (displayType === 'text') {
     return local.renderText ? (
       <>{local.renderText(formattedValue(), otherProps) || null}</>
@@ -490,9 +468,34 @@ export default function NumberFormatBase<BaseType = InputAttributes>(
     );
   } else if (local.customInput) {
     const CustomInput = local.customInput;
-    /* @ts-ignore */
-    return <CustomInput {...inputProps} ref={getInputRef} />;
+    
+    return (
+      /* @ts-ignore */
+      <CustomInput
+        {...otherProps}
+        type={local.type ?? 'text'}
+        value={formattedValue()}
+        onInput={_onChange}
+        ref={local.getInputRef}
+        onKeyDown={onKeyDown}
+        onMouseUp={onMouseUp}
+        onFocus={_onFocus}
+        onBlur={_onBlur}
+      />
+    );
   }
 
-  return <input {...inputProps} ref={local.getInputRef} />;
+  return (
+    <input
+      {...otherProps}
+      type={local.type ?? 'text'}
+      value={formattedValue()}
+      onInput={_onChange}
+      ref={local.getInputRef}
+      onKeyDown={onKeyDown}
+      onMouseUp={onMouseUp}
+      onFocus={_onFocus}
+      onBlur={_onBlur}
+    />
+  );
 }

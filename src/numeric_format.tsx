@@ -26,7 +26,7 @@ import {
   IsCharacterSame,
 } from './types';
 import NumberFormatBase from './number_format_base';
-import { JSX, splitProps } from 'solid-js';
+import { createMemo, JSX, splitProps } from 'solid-js';
 
 export function format<BaseType = InputAttributes>(
   numStr: string,
@@ -49,7 +49,7 @@ export function format<BaseType = InputAttributes>(
     return numStr;
   }
 
-  const { thousandSeparator, decimalSeparator } = getSeparators(props);
+  const separators = getSeparators(props);
 
   /**
    * Keep the decimal separator
@@ -67,10 +67,10 @@ export function format<BaseType = InputAttributes>(
     afterDecimal = limitToScale(afterDecimal, local.decimalScale, !!local.fixedDecimalScale);
   }
 
-  if (thousandSeparator) {
+  if (separators.thousandSeparator) {
     beforeDecimal = applyThousandSeparator(
       beforeDecimal,
-      thousandSeparator,
+      separators.thousandSeparator,
       local.thousandsGroupStyle ?? 'thousand',
     );
   }
@@ -82,7 +82,8 @@ export function format<BaseType = InputAttributes>(
   //restore negation sign
   if (addNegation) beforeDecimal = '-' + beforeDecimal;
 
-  numStr = beforeDecimal + ((hasDecimalSeparator && decimalSeparator) || '') + afterDecimal;
+  numStr =
+    beforeDecimal + ((hasDecimalSeparator && separators.decimalSeparator) || '') + afterDecimal;
 
   return numStr;
 }
@@ -157,9 +158,9 @@ export function removeFormatting<BaseType = InputAttributes>(
   const prefix = local.prefix ?? '';
   const suffix = local.suffix ?? '';
 
-  const { allowedDecimalSeparators, decimalSeparator } = getSeparators(props);
+  const separators = getSeparators(props);
 
-  const isBeforeDecimalSeparator = value[changeMeta.to.end] === decimalSeparator;
+  const isBeforeDecimalSeparator = value[changeMeta.to.end] === separators.decimalSeparator;
 
   /**
    * If only a number is added on empty input which matches with the prefix or suffix,
@@ -176,9 +177,9 @@ export function removeFormatting<BaseType = InputAttributes>(
   /** Check for any allowed decimal separator is added in the numeric format and replace it with decimal separator */
   if (
     changeMeta.to.end - changeMeta.to.start === 1 &&
-    allowedDecimalSeparators.indexOf(value[changeMeta.to.start]) !== -1
+    separators.allowedDecimalSeparators.indexOf(value[changeMeta.to.start]) !== -1
   ) {
-    const separator = local.decimalScale === 0 ? '' : decimalSeparator;
+    const separator = local.decimalScale === 0 ? '' : separators.decimalSeparator;
     value =
       value.substring(0, changeMeta.to.start) +
       separator +
@@ -277,13 +278,16 @@ export function removeFormatting<BaseType = InputAttributes>(
   value = handleNegation(hasNegation ? `-${value}` : value, local.allowNegative);
 
   // remove non numeric characters
-  value = (value.match(getNumberRegex(decimalSeparator, true)) || []).join('');
+  value = (value.match(getNumberRegex(separators.decimalSeparator, true)) || []).join('');
 
   // replace the decimalSeparator with ., and only keep the first separator, ignore following ones
-  const firstIndex = value.indexOf(decimalSeparator);
-  value = value.replace(new RegExp(escapeRegExp(decimalSeparator), 'g'), (match, index) => {
-    return index === firstIndex ? '.' : '';
-  });
+  const firstIndex = value.indexOf(separators.decimalSeparator);
+  value = value.replace(
+    new RegExp(escapeRegExp(separators.decimalSeparator), 'g'),
+    (match, index) => {
+      return index === firstIndex ? '.' : '';
+    },
+  );
 
   //check if beforeDecimal got deleted and there is nothing after decimal,
   //clear all numbers in such case while keeping the - sign
@@ -383,8 +387,8 @@ export function useNumericFormat<BaseType = InputAttributes>(
   ]);
 
   const prefix = local.prefix ?? '';
-  const onKeyDown = local.onKeyDown?? noop;
-  const onBlur = local.onBlur?? noop;
+  const onKeyDown = local.onKeyDown ?? noop;
+  const onBlur = local.onBlur ?? noop;
 
   // get derived decimalSeparator and allowedDecimalSeparators
   const { decimalSeparator, allowedDecimalSeparators } = getSeparators(props);
@@ -431,15 +435,6 @@ export function useNumericFormat<BaseType = InputAttributes>(
     return value;
   };
 
-  // const [{ numAsString, formattedValue }, _onValueChange] = useInternalValues(
-  //   roundIncomingValueToPrecision(local.value),
-  //   roundIncomingValueToPrecision(local.defaultValue),
-  //   Boolean(_valueIsNumericString),
-  //   _format,
-  //   _removeFormatting,
-  //   local.onValueChange,
-  // );
-
   const [values, _onValueChange] = useInternalValues(
     () => roundIncomingValueToPrecision(getValue()),
     roundIncomingValueToPrecision(local.defaultValue),
@@ -464,7 +459,7 @@ export function useNumericFormat<BaseType = InputAttributes>(
 
     // if multiple characters are selected and user hits backspace, no need to handle anything manually
     if (selectionStart !== selectionEnd) {
-      typeof onKeyDown === "function" && onKeyDown(e);
+      typeof onKeyDown === 'function' && onKeyDown(e);
       return;
     }
 
@@ -505,7 +500,7 @@ export function useNumericFormat<BaseType = InputAttributes>(
       setCaretPosition(el, (selectionStart as number) + 1);
     }
 
-    typeof onKeyDown === "function" && onKeyDown(e);
+    typeof onKeyDown === 'function' && onKeyDown(e);
   };
 
   const _onBlur: InputAttributes['onBlur'] = (e) => {
@@ -541,7 +536,7 @@ export function useNumericFormat<BaseType = InputAttributes>(
       );
     }
 
-    typeof onBlur === "function" && onBlur(e);
+    typeof onBlur === 'function' && onBlur(e);
   };
 
   const isValidInputCharacter = (inputChar: string) => {
@@ -615,7 +610,8 @@ export function useNumericFormat<BaseType = InputAttributes>(
 export default function NumericFormat<BaseType = InputAttributes>(
   props: NumericFormatProps<BaseType>,
 ): JSX.Element {
+  const reactiveValue = createMemo(() => props.value);
   const numericFormatProps = useNumericFormat(props);
 
-  return <NumberFormatBase {...numericFormatProps} />;
+  return <NumberFormatBase {...numericFormatProps} value={reactiveValue()} />;
 }
