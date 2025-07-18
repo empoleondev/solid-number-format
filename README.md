@@ -25,18 +25,6 @@ Using `yarn`
 yarn add solid-number-format
 ```
 
-### Release
-
-Matches: v5.4.4
-
-#### Testing
-
-Test cases are written in jasmine and run by karma
-
-Test files : /test/\*\*/\*.spec.js
-
-To run test : `yarn test`
-
 ## License
 
 MIT

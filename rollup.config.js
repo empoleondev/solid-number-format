@@ -1,96 +1,39 @@
-import { uglify } from 'rollup-plugin-uglify';
-import fileSize from 'rollup-plugin-filesize';
-import license from 'rollup-plugin-license';
-import replace from 'rollup-plugin-replace';
-import commonjs from 'rollup-plugin-commonjs';
-import buble from '@rollup/plugin-buble';
-import resolve from 'rollup-plugin-node-resolve';
-import typescript from '@rollup/plugin-typescript';
 import babel from '@rollup/plugin-babel';
+import nodeResolve from '@rollup/plugin-node-resolve';
+import { terser } from 'rollup-plugin-terser';
+import pkg from './package.json';
 
-import PACKAGE from './package.json';
-const fullYear = new Date().getFullYear();
+const extensions = ['.js', '.jsx', '.ts', '.tsx'];
 
-const banner = `${PACKAGE.name} - ${PACKAGE.version}
-  Author : ${PACKAGE.author}
-  Copyright (c) ${fullYear !== 2016 ? '2016,' : ''} ${fullYear} to ${
-  PACKAGE.author
-}, released under the ${PACKAGE.license} license.
-  ${/*PACKAGE.repository.url*/ ''}`;
+const deps = [
+  ...Object.keys(pkg.dependencies || {}),
+  ...Object.keys(pkg.peerDependencies || {}),
+];
 
-  const globals = {
-    'solid-js': 'Solid',
-    'solid-js/web': 'Solid',
-  };
+const external = id =>
+  deps.some(dep => id === dep || id.startsWith(`${dep}/`))
+  || /node_modules/.test(id);
 
-const defaultConfig = {
+export default {
   input: 'src/index.ts',
-  output: [
-    {
-      file: 'dist/solid-number-format.es.js',
-      format: 'esm',
-      globals,
-      exports: 'auto',
-    },
-    {
-      file: 'dist/solid-number-format.cjs.js',
-      format: 'cjs',
-      globals,
-      exports: 'auto',
-    },
-    {
-      file: 'dist/solid-number-format.js',
-      format: 'umd',
-      name: 'NumberFormat',
-      globals,
-      exports: 'auto',
-    },
-  ],
-  external: ['solid-js', 'solid-js/web'],
+  external,
+  output: {
+    format: 'es',
+    sourcemap: true,
+    preserveModules: true,
+    dir: 'dist',
+  },
   plugins: [
-    typescript({
-      target: 'es2016',
-      jsx: 'preserve',
-      jsxImportSource: 'solid-js',
+    nodeResolve({
+      extensions,
+      preferBuiltins: false,
+      resolveOnly: [ /^src\// ],
     }),
     babel({
       babelHelpers: 'bundled',
-      extensions: ['.ts', '.tsx', '.js', '.jsx'],
-      presets: ['babel-preset-solid'],
-      exclude: 'node_modules/**',
+      extensions,
+      include: ['src/**/*'],
     }),
-    buble({
-      objectAssign: true,
-      jsx: 'preserve',
-      jsxImportSource: 'solid-js',
-      transforms: {
-        dangerousForOf: true,
-      },
-    }),
-    replace({
-      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
-    }),
-    resolve(),
-    commonjs({
-      include: /node_modules/,
-    }),
-    fileSize(),
-    license({
-      banner,
-    }),
+    terser(),
   ],
 };
-
-const minConfig = {
-  ...defaultConfig,
-  output: {
-    file: 'dist/solid-number-format.min.js',
-    format: 'umd',
-    name: 'NumberFormat',
-    globals,
-    exports: 'auto',
-  },
-  plugins: [...defaultConfig.plugins, uglify()],
-};
-
-export default [defaultConfig, minConfig];

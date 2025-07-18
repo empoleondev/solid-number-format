@@ -468,7 +468,7 @@ export default function NumberFormatBase<BaseType = InputAttributes>(
     );
   } else if (local.customInput) {
     const CustomInput = local.customInput;
-    
+
     return (
       /* @ts-ignore */
       <CustomInput
