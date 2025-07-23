@@ -265,6 +265,11 @@ export default function NumberFormatBase<BaseType = InputAttributes>(
     let _numAsString = removeFormatting(inputValue, changeMeta);
     const _formattedValue = _format(_numAsString);
 
+    // if (local.isAllowed) {
+    //   const valueObj = getValueObject(_formattedValue, _numAsString);
+    //   console.log('   ⇨ isAllowed check with:', valueObj);
+    // }
+
     // formatting can remove some of the number chars, so we need to fine number string again
     _numAsString = removeFormatting(_formattedValue, undefined);
 
@@ -312,6 +317,11 @@ export default function NumberFormatBase<BaseType = InputAttributes>(
 
     // reset the position, as we have already handled the caret position
     caretPositionBeforeChange = undefined;
+  };
+
+  const handleRawChange: JSX.DOMAttributes<HTMLInputElement>['onChange'] = (e) => {
+    // cast the Solid/DOM event to InputEvent
+    _onChange(e as unknown as InputEvent);
   };
 
   const _onKeyDown = (e: KeyboardEvent) => {
@@ -491,6 +501,7 @@ export default function NumberFormatBase<BaseType = InputAttributes>(
       type={local.type ?? 'text'}
       value={formattedValue()}
       onInput={_onChange}
+      onChange={handleRawChange} 
       ref={local.getInputRef}
       onKeyDown={onKeyDown}
       onMouseUp={onMouseUp}
