@@ -30,7 +30,7 @@ export default {
       resolveOnly: [ /^src\// ],
     }),
     babel({
-      babelHelpers: 'bundled',
+      babelHelpers: 'inline',
       extensions,
       include: ['src/**/*'],
     }),
