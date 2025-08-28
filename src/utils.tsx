@@ -115,12 +115,16 @@ export function fixLeadingZero(numStr?: string) {
  * Not used .fixedTo because that will break with big numbers
  */
 export function limitToScale(numStr: string, scale: number, fixedDecimalScale: boolean) {
-  let str = '';
-  const filler = fixedDecimalScale ? '0' : '';
-  for (let i = 0; i <= scale - 1; i++) {
-    str += numStr[i] || filler;
+  if (numStr.length <= scale) {
+    let str = '';
+    const filler = fixedDecimalScale ? '0' : '';
+    for (let i = 0; i <= scale - 1; i++) {
+      str += numStr[i] || filler;
+    }
+    return str;
   }
-  return str;
+  
+  return numStr.substring(0, scale);
 }
 
 function repeat(str: string, count: number) {
@@ -458,24 +462,25 @@ export function useInternalValues(
   value: () => string | number | null | undefined,
   defaultValue: string | number | null | undefined,
   valueIsNumericString: boolean,
-  format: FormatInputValueFunction,
-  removeFormatting: NumberFormatBaseProps['removeFormatting'],
+  format: (() => FormatInputValueFunction) | FormatInputValueFunction,
+  removeFormatting: (() => NumberFormatBaseProps['removeFormatting']) | NumberFormatBaseProps['removeFormatting'],
   onValueChange: NumberFormatBaseProps['onValueChange'] = noop,
 ): [() => { formattedValue: string; numAsString: string }, OnValueChange] {
-  type Values = { formattedValue: string; numAsString: string };
-
   const getValues = usePersistentCallback(
     (value: string | number | null | undefined, valueIsNumericString: boolean) => {
+      const currentFormat: FormatInputValueFunction = typeof format === 'function' && format.length === 0 ? (format as () => FormatInputValueFunction)() : format as FormatInputValueFunction;
+      const currentRemoveFormatting: NumberFormatBaseProps['removeFormatting'] = typeof removeFormatting === 'function' && removeFormatting.length === 0 ? (removeFormatting as () => NumberFormatBaseProps['removeFormatting'])() : removeFormatting as NumberFormatBaseProps['removeFormatting'];
+
       let formattedValue, numAsString;
       if (isNotValidValue(value)) {
         numAsString = '';
-        formattedValue = format(numAsString);
+        formattedValue = currentFormat(numAsString);
       } else if (typeof value === 'number' || valueIsNumericString) {
         numAsString = typeof value === 'number' ? toNumericString(value) : value;
-        formattedValue = format(numAsString);
+        formattedValue = currentFormat(numAsString);
       } else {
-        numAsString = removeFormatting(value, undefined);
-        formattedValue = format(numAsString);
+        numAsString = currentRemoveFormatting(value, undefined);
+        formattedValue = currentFormat(numAsString);
       }
 
       return { formattedValue, numAsString };
@@ -483,7 +488,7 @@ export function useInternalValues(
   );
 
   const initialValues = getValues(isNil(value()) ? defaultValue : value(), valueIsNumericString);
-  const [values, setValues] = createSignal<Values>(initialValues);
+  const [values, setValues] = createSignal(initialValues);
 
   const _onValueChange: typeof onValueChange = (newValues, sourceInfo) => {
     if (newValues.formattedValue !== values().formattedValue) {
@@ -493,14 +498,30 @@ export function useInternalValues(
       });
     }
 
-    // call parent on value change if only if formatted value is changed
     onValueChange(newValues, sourceInfo);
   };
 
-  // if value is switch from controlled to uncontrolled, use the internal state's value to format with new props
   createEffect(() => {
-    const _value = isNil(value()) ? untrack(() => values().numAsString) : value();
+    const _value = (() => {
+      const currentValue = value();
+      const isNilValue = isNil(currentValue);
+      const oldNumAsString = untrack(() => values().numAsString);
+      
+      // Only clear when explicitly null AND we have a previous value AND no defaultValue fallback
+      const shouldClear = currentValue === null && oldNumAsString !== '' && isNil(defaultValue);
+      
+      return shouldClear ? '' : (isNilValue ? oldNumAsString : currentValue);
+    })();
     const _valueIsNumericString = isNil(value()) ? true : valueIsNumericString;
+
+    // Access format functions for reactivity
+    if (typeof format === 'function' && format.length === 0) {
+      (format as () => FormatInputValueFunction)();
+    }
+    if (typeof removeFormatting === 'function' && removeFormatting.length === 0) {
+      (removeFormatting as () => NumberFormatBaseProps['removeFormatting'])();
+    }
+
     const newValues = getValues(_value, _valueIsNumericString);
     setValues(newValues);
   });

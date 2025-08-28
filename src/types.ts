@@ -79,6 +79,7 @@ type NumberFormatBase = {
   value?: number | string | null;
   defaultValue?: number | string | null;
   valueIsNumericString?: boolean;
+  numAsString?: string;
   onValueChange?: OnValueChange;
   isAllowed?: (values: NumberFormatValues) => boolean;
   onKeyDown?: InputAttributes['onKeyDown'];

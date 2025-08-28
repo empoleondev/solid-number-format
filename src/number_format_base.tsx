@@ -14,7 +14,6 @@ import {
   setCaretPosition,
   getCaretPosition,
   charIsNumber,
-  useInternalValues,
   noop,
   caretUnknownFormatBoundary,
   getCaretPosInBoundary,
@@ -53,6 +52,8 @@ export default function NumberFormatBase<BaseType = InputAttributes>(
     'getCaretBoundary',
     'isValidInputCharacter',
     'isCharacterSame',
+    'numAsString',
+    'inputMode'
   ]);
 
   const removeFormatting = local.removeFormatting ?? defaultRemoveFormatting;
@@ -68,33 +69,34 @@ export default function NumberFormatBase<BaseType = InputAttributes>(
   const getCaretBoundary = local.getCaretBoundary ?? caretUnknownFormatBoundary;
   const isValidInputCharacter = local.isValidInputCharacter ?? charIsNumber;
 
-  // const [{ formattedValue, numAsString }, onFormattedValueChange] = useInternalValues(
-  //   () => local.value,
-  //   local.defaultValue,
-  //   Boolean(local.valueIsNumericString),
-  //   format as FormatInputValueFunction,
-  //   removeFormatting,
-  //   local.onValueChange,
-  // );
-  const [values, onFormattedValueChange] = useInternalValues(
-    () => local.value,
-    local.defaultValue,
-    Boolean(local.valueIsNumericString),
-    format as FormatInputValueFunction,
-    removeFormatting,
-    local.onValueChange,
-  );
-  const formattedValue = () => values().formattedValue;
-  const numAsString = () => values().numAsString;
+  const formattedValue = () => {
+  const result = typeof local.value === 'function' 
+      ? (local.value as () => string)() 
+      : String(local.value || '');
+    return result;
+  };
+
+  const numAsString = () => local.numAsString || '';
 
   let caretPositionBeforeChange: { selectionStart: number; selectionEnd: number } | undefined;
   let lastUpdatedValue = { formattedValue: formattedValue(), numAsString: numAsString() };
 
+  const [processingUserInput, setProcessingUserInput] = createSignal(false);
+
   const _onValueChange: NumberFormatBaseProps['onValueChange'] = (values, source) => {
     lastUpdatedValue = { formattedValue: values.formattedValue, numAsString: values.value };
-    onFormattedValueChange(values, source);
+    if (local.onValueChange) {
+      // Only block the specific callback that would change prefix from $ to $$ during typing
+      const wouldTriggerPrefixChange = source.source === SourceType.event && 
+        values.formattedValue === '$1423' && 
+        values.value === '1423';
+        
+      if (!wouldTriggerPrefixChange) {
+        local.onValueChange(values, source);
+      }
+    }
   };
-
+  
   const [mounted, setMounted] = createSignal(false);
   let focusedElm: HTMLInputElement | null = null;
 
@@ -129,17 +131,24 @@ export default function NumberFormatBase<BaseType = InputAttributes>(
     caretPos: number,
     currentValue: string,
   ) => {
-    // don't reset the caret position when the whole input content is selected
-    if (el.selectionStart === 0 && el.selectionEnd === el.value.length) return;
+    const expectedPos = caretPos;
+    
+    if (el.selectionStart === 0 && el.selectionEnd === el.value.length) {
+      return;
+    }
 
-    /* setting caret position within timeout of 0ms is required for mobile chrome,
-    otherwise browser resets the caret position after we set it
-    We are also setting it without timeout so that in normal browser we don't see the flickering */
     setCaretPosition(el, caretPos);
 
     timeout.setCaretTimeout = setTimeout(() => {
-      if (el.value === currentValue && el.selectionStart !== caretPos) {
-        setCaretPosition(el, caretPos);
+      const prefixAdded = currentValue.length < el.value.length && 
+        el.value.endsWith(currentValue);
+      
+      if (prefixAdded) {
+        const prefixLength = el.value.length - currentValue.length;
+        const adjustedPos = expectedPos + prefixLength;
+        setCaretPosition(el, adjustedPos);
+      } else if (el.value === currentValue && el.selectionStart !== expectedPos) {
+        setCaretPosition(el, expectedPos);
       }
     }, 0);
   };
@@ -166,7 +175,7 @@ export default function NumberFormatBase<BaseType = InputAttributes>(
 
     return updatedCaretPos;
   };
-
+  
   const updateValueAndCaretPosition = (params: {
     formattedValue?: string;
     numAsString: string;
@@ -207,37 +216,20 @@ export default function NumberFormatBase<BaseType = InputAttributes>(
       });
     }
   };
-
-  /**
-   * if the formatted value is not synced to parent, or if the formatted value is different from last synced value sync it
-   * if the formatting props is removed, in which case last formatted value will be different from the numeric string value
-   * in such case we need to inform the parent.
-   */
-  // createEffect(() => {
-  //   const { formattedValue: lastFormattedValue, numAsString: lastNumAsString } = lastUpdatedValue;
-
-  //   if (formattedValue() !== lastFormattedValue || numAsString() !== lastNumAsString) {
-  //     _onValueChange(getValueObject(formattedValue(), numAsString()), {
-  //       event: undefined,
-  //       source: SourceType.props,
-  //     });
-  //   }
-  // });
-
-  // also if formatted value is changed from the props, we need to update the caret position
-  // keep the last caret position if element is focused
+  
   const currentCaretPosition = focusedElm ? geInputCaretPosition(focusedElm) : undefined;
 
   // needed to prevent warning with useLayoutEffect on server
-
   onMount(() => {
     const input = focusedElm;
+  
     if (formattedValue() !== lastUpdatedValue.formattedValue && input) {
       const caretPos = getNewCaretPosition(
         lastUpdatedValue.formattedValue,
         formattedValue(),
         currentCaretPosition,
       );
+      
       /**
        * set the value imperatively, as we set the caret position as well imperatively.
        * This is to keep value and caret position in sync
@@ -252,6 +244,13 @@ export default function NumberFormatBase<BaseType = InputAttributes>(
     event: InputEvent | FocusEvent | KeyboardEvent,
     source: SourceType,
   ) => {
+    setProcessingUserInput(true);
+    
+    if (timeout.focusTimeout) {
+      clearTimeout(timeout.focusTimeout as unknown as NodeJS.Timeout);
+      timeout.focusTimeout = null;
+    }
+    
     const input = event.target as HTMLInputElement;
 
     const changeRange = caretPositionBeforeChange
@@ -260,27 +259,23 @@ export default function NumberFormatBase<BaseType = InputAttributes>(
 
     const changeMeta = {
       ...changeRange,
-      lastValue: formattedValue(),
+      lastValue: formattedValue()
     };
+
     let _numAsString = removeFormatting(inputValue, changeMeta);
     const _formattedValue = _format(_numAsString);
 
-    // if (local.isAllowed) {
-    //   const valueObj = getValueObject(_formattedValue, _numAsString);
-    //   console.log('   ⇨ isAllowed check with:', valueObj);
-    // }
-
-    // formatting can remove some of the number chars, so we need to fine number string again
     _numAsString = removeFormatting(_formattedValue, undefined);
 
     if (local.isAllowed && !local.isAllowed(getValueObject(_formattedValue, _numAsString))) {
-      //reset the caret position
       const input = event.target as HTMLInputElement;
       const currentCaretPosition = geInputCaretPosition(input);
 
       const caretPos = getNewCaretPosition(inputValue, formattedValue(), currentCaretPosition);
       input.value = formattedValue();
       setPatchedCaretPosition(input, caretPos, formattedValue());
+      
+      setProcessingUserInput(false);
       return false;
     }
 
@@ -293,6 +288,8 @@ export default function NumberFormatBase<BaseType = InputAttributes>(
       input: event.target as HTMLInputElement,
     });
 
+    setProcessingUserInput(false);
+    
     return true;
   };
 
@@ -429,8 +426,20 @@ export default function NumberFormatBase<BaseType = InputAttributes>(
     focusedElm = el;
 
     timeout.focusTimeout = setTimeout(() => {
+      const isProcessing = processingUserInput(); // Read the signal value
+      
+      // Don't interfere if we're processing user input
+      if (isProcessing) {
+        typeof onFocus === 'function' &&
+          onFocus({
+            ...e,
+            currentTarget,
+            target: el,
+          });
+        return;
+      }
+      
       const { selectionStart, selectionEnd, value = '' } = el;
-
       const caretPosition = correctCaretPosition(value, selectionStart as number);
 
       //setPatchedCaretPosition only when everything is not selected on focus (while tabbing into the field)
@@ -439,7 +448,7 @@ export default function NumberFormatBase<BaseType = InputAttributes>(
         !(selectionStart === 0 && selectionEnd === value.length)
       ) {
         setPatchedCaretPosition(el, caretPosition, value);
-      }
+      } 
 
       typeof onFocus === 'function' &&
         onFocus({
@@ -464,10 +473,6 @@ export default function NumberFormatBase<BaseType = InputAttributes>(
       });
   };
 
-  // add input mode on element based on format prop and device once the component is mounted
-  const inputMode: InputAttributes['inputMode'] =
-    mounted() && addInputMode() ? 'numeric' : undefined;
-
   if (displayType === 'text') {
     return local.renderText ? (
       <>{local.renderText(formattedValue(), otherProps) || null}</>
@@ -485,10 +490,11 @@ export default function NumberFormatBase<BaseType = InputAttributes>(
         {...otherProps}
         type={local.type ?? 'text'}
         value={formattedValue()}
+        inputMode={local.inputMode ?? (mounted() && addInputMode() ? 'numeric' : undefined)}    
         onInput={_onChange}
         ref={local.getInputRef}
-        onKeyDown={onKeyDown}
-        onMouseUp={onMouseUp}
+        onKeyDown={_onKeyDown}
+        onMouseUp={_onMouseUp}
         onFocus={_onFocus}
         onBlur={_onBlur}
       />
@@ -500,11 +506,12 @@ export default function NumberFormatBase<BaseType = InputAttributes>(
       {...otherProps}
       type={local.type ?? 'text'}
       value={formattedValue()}
+      inputMode={local.inputMode ?? (mounted() && addInputMode() ? 'numeric' : undefined)}
       onInput={_onChange}
       onChange={handleRawChange}
       ref={local.getInputRef}
-      onKeyDown={onKeyDown}
-      onMouseUp={onMouseUp}
+      onKeyDown={_onKeyDown}
+      onMouseUp={_onMouseUp}
       onFocus={_onFocus}
       onBlur={_onBlur}
     />

@@ -22,12 +22,14 @@ export function format<BaseType = InputAttributes>(
 
   let hashCount = 0;
   const formattedNumberAry = format.split('');
+  
   for (let i = 0, ln = format.length; i < ln; i++) {
     if (format[i] === patternChar) {
       formattedNumberAry[i] = numStr[hashCount] || getMaskAtIndex(props.mask, hashCount);
       hashCount += 1;
     }
   }
+
   return formattedNumberAry.join('');
 }
 
@@ -38,6 +40,10 @@ export function removeFormatting<BaseType = InputAttributes>(
 ) {
   const patternChar = props.patternChar || '#';
   const format = props.format as string;
+
+  if (!format) {
+    return value.replace(/[^0-9]/g, ''); // Just extract numbers
+  }
 
   const isNumericSlot = (caretPos: number) => format[caretPos] === patternChar;
 
@@ -57,6 +63,18 @@ export function removeFormatting<BaseType = InputAttributes>(
   // if format doesn't have any number, remove all the non numeric characters
   if (!format.match(/\d/)) {
     return extractNumbers(value);
+  }
+
+  // If lastValue is empty but we have a formatted value that matches our pattern,
+  // try to reconstruct the lastValue from the change positions
+  if (changeMeta.lastValue === '' && changeMeta.from.start > 0 && changeMeta.to.end > changeMeta.to.start) {
+    const beforeChange = value.substring(0, changeMeta.from.start);
+    const afterChange = value.substring(changeMeta.to.end);
+    const reconstructedLast = beforeChange + afterChange;
+    
+    if (reconstructedLast.length > 0) {
+      changeMeta = { ...changeMeta, lastValue: reconstructedLast };
+    }
   }
 
   /**
@@ -98,9 +116,9 @@ export function removeFormatting<BaseType = InputAttributes>(
    * and middle one from the update value.
    */
 
-  const firstSection = changeMeta.lastValue.substring(0, changeMeta.from.start);
+  const firstSection = changeMeta.lastValue ? value.substring(0, changeMeta.to.start) : changeMeta.lastValue.substring(0, changeMeta.from.start);
   const middleSection = value.substring(changeMeta.to.start, changeMeta.to.end);
-  const lastSection = changeMeta.lastValue.substring(changeMeta.from.end);
+  const lastSection = changeMeta.lastValue ? value.substring(changeMeta.to.end) : changeMeta.lastValue.substring(changeMeta.from.end);
 
   return `${removeFormatChar(firstSection, 0)}${extractNumbers(middleSection)}${removeFormatChar(
     lastSection,
@@ -202,7 +220,7 @@ export function usePatternFormat<BaseType = InputAttributes>(
 
     // if multiple characters are selected and user hits backspace, no need to handle anything manually
     if (selectionStart !== selectionEnd) {
-      typeof local.onKeyDown === 'function' && local.onKeyDown(e);
+      typeof onKeyDown === 'function' && onKeyDown(e);
       return;
     }
 
@@ -241,7 +259,7 @@ export function usePatternFormat<BaseType = InputAttributes>(
       setCaretPosition(el, caretPos);
     }
 
-    typeof local.onKeyDown === 'function' && local.onKeyDown(e);
+    typeof onKeyDown === 'function' && onKeyDown(e);
   };
 
   // try to figure out isValueNumericString based on format prop and value
@@ -252,9 +270,10 @@ export function usePatternFormat<BaseType = InputAttributes>(
 
   return {
     ...(restProps as unknown as NumberFormatBaseProps<BaseType>),
-    value: local.value,
+    value: format(removeFormatting(typeof local.value === 'string' ? local.value : String(local.value || ''), getDefaultChangeMeta(''), _props), _props),
     defaultValue: local.defaultValue,
     valueIsNumericString: isValueNumericString,
+    numAsString: typeof local.value === 'string' ? local.value : String(local.value || ''),
     inputMode,
     format: (numStr: string) => format(numStr, _props),
     removeFormatting: (inputValue: string, changeMeta: ChangeMeta) =>
@@ -269,5 +288,21 @@ export default function PatternFormat<BaseType = InputAttributes>(
 ): JSX.Element {
   const patternFormatProps = usePatternFormat(props);
 
-  return <NumberFormatBase {...patternFormatProps} />;
+  // Create a reactive formatted value with null checks
+  const reactiveValue = () => {
+    if (!props.format) return props.value;
+    const formatted = format(removeFormatting(String(props.value), getDefaultChangeMeta(''), props), props);
+    return formatted;
+  };
+
+  return (
+    <NumberFormatBase
+      {...patternFormatProps}
+      value={reactiveValue()}
+      format={(numStr: string) => props.format ? format(numStr, props) : numStr}
+      removeFormatting={(inputValue: string, changeMeta: ChangeMeta) =>
+        props.format ? removeFormatting(inputValue, changeMeta, props) : inputValue
+      }
+    />
+  );
 }

@@ -81,95 +81,73 @@ describe('NumberFormat as text', () => {
     expect(span).toBeVisible();
   });
 
-  // it('should limit decimal scale to given value', () => {
-  //   const { rerender } = render(
-  //     <NumericFormat value={4111.344} displayType={'text'} decimalScale={2} />,
-  //   );
-
-  //   const span = screen.getByText('4111.34');
-  //   expect(span).toBeVisible();
-
-  //   rerender(<NumericFormat value={4111.358} displayType={'text'} decimalScale={2} />);
-
-  //   expect(span.textContent).toEqual('4111.36');
-  // });
-
-  // can't fix
-  // it('should limit decimal scale to given value', async () => {
-  //   const [value, setValue] = createSignal(4111.344);
+  it('should limit decimal scale to given value', async () => {
+    const [value, setValue] = createSignal(4111.344);
     
-  //   const TestComponent = () => (
-  //     <NumericFormat value={value()} displayType={'text'} decimalScale={2} />
-  //   );
+    const TestComponent = () => {
+      return <NumericFormat value={value()} displayType={'text'} decimalScale={2} />;
+    };
 
-  //   render(() => <TestComponent />);
+    const { container } = render(() => <TestComponent />);
     
-  //   let span = screen.getByText('4111.34');
-  //   expect(span.offsetParent).not.toBeNull(); // This will now work
-
-  //   setValue(4111.358);
+    let span = screen.getByText('4111.34');
+    expect(span).toBeVisible();
+    setValue(4111.358);
     
-  //   await waitFor(() => {
-  //     span = screen.getByText('4111.36');
-  //     expect(span.textContent).toEqual('4111.36');
-  //   });
-  // });
+    await waitFor(() => {
+      // Re-query the span element since the content has changed
+      const updatedSpan = container.querySelector('span');
+      expect(updatedSpan).not.toBeNull();
+      // This should match the React behavior: 4111.358 should round to 4111.36
+      expect(updatedSpan!.textContent).toEqual('4111.36');
+    });
+  });
 
-  // it('should add zeros if fixedDecimalScale is provided', () => {
-  //   const { rerender } = render(
-  //     <NumericFormat
-  //       value="4111.11"
-  //       valueIsNumericString
-  //       displayType={'text'}
-  //       decimalScale={4}
-  //       fixedDecimalScale={true}
-  //     />,
-  //   );
-
-  //   const span = screen.getByText('4111.1100');
-  //   expect(span).toBeVisible();
-
-  //   rerender(
-  //     <NumericFormat
-  //       value="4111.11"
-  //       valueIsNumericString
-  //       displayType={'text'}
-  //       decimalScale={1}
-  //       fixedDecimalScale={true}
-  //     />,
-  //   );
-  //   expect(span.textContent).toEqual('4111.1');
-  // });
-
-  // can't fix
-  // it('should add zeros if fixedDecimalScale is provided', async () => {
-  //   const [decimalScale, setDecimalScale] = createSignal(4);
+  it('should limit decimal scale to given value', async () => {
+    const [value, setValue] = createSignal(4111.344);
     
-  //   const TestComponent = () => (
-  //     <NumericFormat
-  //       value="4111.11"
-  //       valueIsNumericString
-  //       displayType={'text'}
-  //       decimalScale={decimalScale()}
-  //       fixedDecimalScale={true}
-  //     />
-  //   );
+    const TestComponent = () => (
+      <NumericFormat value={value()} displayType={'text'} decimalScale={2} />
+    );
 
-  //   render(() => <TestComponent />);
+    render(() => <TestComponent />);
     
-  //   let span = screen.getByText('4111.1100');
-  //   expect(span.offsetParent).not.toBeNull();
+    let span = screen.getByText('4111.34');
+    expect(span.offsetParent).not.toBeNull(); // This will now work
 
-  //   // Update the signal to trigger re-render
-  //   setDecimalScale(1);
+    setValue(4111.358);
     
-  //   // Wait for the DOM to update and re-query the element
-  //   await waitFor(() => {
-  //     span = screen.getByText('4111.1');
-  //   });
+    await waitFor(() => {
+      span = screen.getByText('4111.36');
+      expect(span.textContent).toEqual('4111.36');
+    });
+  });
+
+  it('should add zeros if fixedDecimalScale is provided', async () => {
+    const [decimalScale, setDecimalScale] = createSignal(4);
     
-  //   expect(span.textContent).toEqual('4111.1');
-  // });
+    const TestComponent = () => (
+      <NumericFormat
+        value="4111.11"
+        valueIsNumericString
+        displayType={'text'}
+        decimalScale={decimalScale()}
+        fixedDecimalScale={true}
+      />
+    );
+
+    const { container } = render(() => <TestComponent />);
+    
+    let span = screen.getByText('4111.1100');
+    expect(span).toBeVisible();
+
+    setDecimalScale(1);
+    
+    await waitFor(() => {
+      const updatedSpan = container.querySelector('span');
+      expect(updatedSpan!.textContent).toEqual('4111.1');
+    });
+  });
 
   it('should accept custom renderText method', () => {
     render(() => 
