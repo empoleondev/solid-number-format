@@ -154,22 +154,37 @@ export function CustomRenderText() {
 }
 
 export function CurrencyInput() {
-  const [test, setTest] = createSignal("1232323.78");
+  const [test, setTest] = createSignal("1232323.780023");
+  const [thousandSeparator, setThousandSeparator] = createSignal(".");
 
   const handleValueChange = (values: { formattedValue: string; value: string; floatValue: number | undefined }) => {
     setTest(values.value);
+  };
+
+  const handleChange = (e: Event) => {
+    const target = e.target as HTMLInputElement;
+    console.log(target.value);
+  };
+
+  const handleBlur = (e: FocusEvent) => {
+    const target = e.target as HTMLInputElement;
+    console.log(target.value);
   };
 
   return (
     <div style="padding: 20px;">
       <h3>Prefix and thousand separator : Format currency in input</h3>
       <NumericFormat
-        thousandSeparator=","
-        decimalSeparator="."
+        thousandSeparator={thousandSeparator()}
+        decimalSeparator=","
         value={test()}
+        valueIsNumericString
         prefix="$"
         onValueChange={handleValueChange}
+        onChange={handleChange}
+        onBlur={handleBlur}
       />
+      <button onClick={() => setThousandSeparator(" ")}>Ok</button>
     </div>
   );
 }
